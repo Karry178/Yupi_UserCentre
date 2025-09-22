@@ -1,0 +1,16 @@
+# 部署到线上环境：主服务器192.168.0.101
+
+spring:
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://192.168.0.101:3306/yupi_universe?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai
+    username: "192.168.0.101"
+    password: 123456
+  # session:失效时间
+  session:
+    timeout: 86400
+
+
+
+
+

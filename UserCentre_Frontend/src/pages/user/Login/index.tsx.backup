@@ -1,0 +1,230 @@
+import Footer from '@/components/Footer';
+import { login } from '@/services/ant-design-pro/api';
+import { LockOutlined, UserOutlined } from '@ant-design/icons';
+import { LoginForm, ProFormCheckbox, ProFormText } from '@ant-design/pro-components';
+import { Alert, message, Tabs, Divider } from 'antd';
+import React, { useState, useEffect } from 'react';
+import { FormattedMessage, history, Link, SelectLang, useIntl, useModel } from 'umi';
+import styles from './index.less';
+import { SYSTEM_LOGO } from '@/constants';
+
+
+const LoginMessage: React.FC<{
+  content: string;
+}> = ({ content }) => (
+  <Alert
+    style={{
+      marginBottom: 24,
+    }}
+    message={content}
+    type="error"
+    showIcon
+  />
+);
+
+const Login: React.FC = () => {
+  const [userLoginState, setUserLoginState] = useState<API.LoginResult>({});
+  const [type, setType] = useState<string>('account');
+  const { initialState, setInitialState } = useModel('@@initialState');
+  const [autoLoginCredentials, setAutoLoginCredentials] = useState<{
+    userAccount?: string;
+    userPassword?: string;
+  }>({});
+
+  const intl = useIntl();
+
+  // 检查URL参数，如果有注册传递过来的用户名密码，则自动填充并登录
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const userAccount = urlParams.get('userAccount');
+    const userPassword = urlParams.get('userPassword');
+
+    if (userAccount && userPassword) {
+      setAutoLoginCredentials({ userAccount, userPassword });
+      // 延迟一下自动登录，让用户看到填充的信息
+      setTimeout(() => {
+        handleSubmit({ userAccount, userPassword, type: 'account' });
+      }, 1000);
+    }
+  }, []);
+
+  const fetchUserInfo = async () => {
+    console.log('fetchUserInfo函数被调�?);
+    console.log('initialState:', initialState);
+    console.log('fetchUserInfo方法存在:', !!initialState?.fetchUserInfo);
+    
+    const userInfo = await initialState?.fetchUserInfo?.();
+    console.log('获取到的用户信息:', userInfo);
+    
+    if (userInfo) {
+      await setInitialState((s) => ({
+        ...s,
+        currentUser: userInfo,
+      }));
+      console.log('用户状态已更新');
+    } else {
+      console.warn('未获取到用户信息');
+    }
+  };
+
+  const handleSubmit = async (values: API.LoginParams) => {
+    try {
+      // 登录
+      const user = await login({ ...values, type });
+      console.log('登录API响应:', user);
+      console.log('用户数据类型:', typeof user);
+      
+      if (user) {
+        const defaultLoginSuccessMessage = intl.formatMessage({
+          id: 'pages.login.success',
+          defaultMessage: '登录成功�?,
+        });
+        message.success(defaultLoginSuccessMessage);
+        
+        // 直接使用登录返回的用户数据，不调用可能失败的fetchUserInfo
+        console.log('设置用户状�?..');
+        await setInitialState((s) => ({
+          ...s,
+          currentUser: { ...user, access: " Admin\ },
+        }));
+        console.log('用户状态设置完成，准备跳转...');
+        
+        /** 此方法会跳转�?redirect 参数所在的位置 */
+        if (!history) {
+          console.error('history对象不存�?);
+          return;
+        }
+        const { query } = history.location;
+        const { redirect } = query as { redirect: string };
+        const targetPath = redirect || '/welcome';
+        console.log('跳转�?', targetPath);
+        history.push(targetPath);
+        return;
+      }
+      // 如果失败去设置用户错误信�?      console.log('登录失败，用户数�?', user);
+      setUserLoginState(user);
+    } catch (error) {
+      const defaultLoginFailureMessage = intl.formatMessage({
+        id: 'pages.login.failure',
+        defaultMessage: '登录失败，请重试�?,
+      });
+      message.error(defaultLoginFailureMessage);
+    }
+  };
+  const { status, type: loginType } = userLoginState;
+
+  return (
+    <div className={styles.container}>
+      <div className={styles.lang} data-lang>
+        {SelectLang && <SelectLang />}
+      </div>
+      <div className={styles.content}>
+        <LoginForm
+          logo={<img alt="logo" src={SYSTEM_LOGO} />}
+          title="业务管理系统demo"
+          subTitle={
+            <>
+
+            </>
+          }
+          initialValues={{
+            autoLogin: true,
+          }}
+          onFinish={async (values) => {
+            await handleSubmit(values as API.LoginParams);
+          }}
+        >
+          <Tabs activeKey={type} onChange={setType}>
+            <Tabs.TabPane
+              key="account"
+              tab={intl.formatMessage({
+                id: 'pages.login.accountLogin.tab',
+                defaultMessage: '账号密码登录',
+              })}
+            />
+          </Tabs>
+
+          {status === 'error' && loginType === 'account' && (
+            <LoginMessage
+              content={intl.formatMessage({
+                id: 'pages.login.accountLogin.errorMessage',
+                defaultMessage: '账号或密码错�?,
+              })}
+            />
+          )}
+          {type === 'account' && (
+            <>
+              <ProFormText
+                name="userAccount"
+                initialValue={autoLoginCredentials.userAccount}
+                fieldProps={{
+                  size: 'large',
+                  prefix: <UserOutlined className={styles.prefixIcon} />,
+                }}
+                placeholder={intl.formatMessage({
+                  id: 'pages.login.userAccount.placeholder',
+                  defaultMessage: '请输入账�?,
+                })}
+                rules={[
+                  {
+                    required: true,
+                    message: (
+                      <FormattedMessage
+                        id="pages.login.userAccount.required"
+                        defaultMessage="请输入账�?"
+                      />
+                    ),
+                  },
+                ]}
+              />
+              <ProFormText.Password
+                name="userPassword"
+                initialValue={autoLoginCredentials.userPassword}
+                fieldProps={{
+                  size: 'large',
+                  prefix: <LockOutlined className={styles.prefixIcon} />,
+                }}
+                placeholder={intl.formatMessage({
+                  id: 'pages.login.userPassword.placeholder',
+                  defaultMessage: '请输入密�?,
+                })}
+                rules={[
+                  {
+                    required: true,
+                    message: (
+                      <FormattedMessage
+                        id="pages.login.userPassword.required"
+                        defaultMessage="请输入密码！"
+                      />
+                    ),
+                  },
+                  {
+                    min: 8,
+                    type: 'string',
+                    message: '长度不能小于8�?,
+                  },
+                ]}
+              />
+            </>
+          )}
+
+          <ProFormCheckbox noStyle name="autoLogin">
+            <FormattedMessage id="pages.login.rememberMe" defaultMessage="自动登录" />
+          </ProFormCheckbox>
+          <Divider type="vertical"/>
+          <Link to="/user/register">新用户注�?/Link>
+          <a
+            style={{
+              float: 'right',
+            }}
+          >
+            <FormattedMessage id="pages.login.forgotuserPassword" defaultMessage="忘记密码" />
+          </a>
+        </LoginForm>
+      </div>
+      <Footer />
+    </div>
+  );
+};
+
+export default Login;
