@@ -21,12 +21,11 @@ mybatis-plus:
   configuration:
   # 说明数据库表中的字段名是 userAccount（驼峰命名），而不是 user_account（下划线命名）。
     map-underscore-to-camel-case: false
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+
   global-config:
     db-config:
       id-type: auto
       logic-delete-field: isDelete # 逻辑删除字段名
       logic-delete-value: 1 # 逻辑已删除值(默认是1)
       logic-not-delete-value: 0 # 逻辑未删除值(默认是0)
-
-
-

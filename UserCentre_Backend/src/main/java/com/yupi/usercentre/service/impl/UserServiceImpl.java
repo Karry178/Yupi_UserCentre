@@ -3,6 +3,9 @@ import java.util.Date;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.google.gson.Gson;
+import com.google.gson.TypeAdapter;
+import com.google.gson.reflect.TypeToken;
 import com.yupi.usercentre.common.ErrorCode;
 import com.yupi.usercentre.exception.BusinessException;
 import com.yupi.usercentre.model.domain.User;
@@ -17,10 +20,13 @@ import org.springframework.util.DigestUtils;
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
 import java.util.List;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import static com.yupi.usercentre.constant.UserConstant.USER_LOGIN_STATE;
+import static net.sf.jsqlparser.util.validation.metadata.NamedObject.user;
 
 /**
 * @author 17832
@@ -207,6 +213,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         safetyUser.setUpdateTime(new Date());
         safetyUser.setIsDelete(0);
         safetyUser.setPlanetCode(originUser.getPlanetCode());
+        safetyUser.setTags(originUser.getTags());
         return safetyUser;
     }
 
@@ -223,17 +230,18 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
 
 
     /**
-     * 根据标签搜索用户
-     *
+     * 根据标签，基于SQL搜索用户
      * @param tagNameList
      * @return 搜索到的用户列表
      */
-    @Override
-    public List<User> searchUserByTags(List<String> tagNameList) {
+    @Deprecated // 表示此方法已弃用
+    private List<User> searchUserByTagsBySQL(List<String> tagNameList) {
         // 如果查询标签为空，直接返回异常信息，否则创建查询
         if (CollectionUtils.isEmpty(tagNameList)){
             throw new BusinessException(ErrorCode.PARAM_ERROR);
         }
+
+        // 法一：SQL查询(实现简单)
         QueryWrapper<User> queryWrapper = new QueryWrapper<>();
         // 拼接 and查询
           // like '%Java%' and like '%Python%'
@@ -243,11 +251,60 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         }
         // 返回查询结果，通过userMapper连接Service层和数据库，返回List<User>；(Mapper/Dao层是数据访问层)
         List<User> userList = userMapper.selectList(queryWrapper);
-        // 对于userList中每一个user，要脱敏后输出
-        userList.forEach(user -> {
-            getSafetyUser(user);
-        });
-        return userList;
+
+        // 对于userList中每一个user，要脱敏后输出一个新的列表
+        return userList.stream().map(user -> {
+            return getSafetyUser(user);
+        }).collect(Collectors.toList());
+    }
+
+
+    /**
+     * 根据标签搜索用户(基于内存过滤)
+     * @param tagNameList
+     * @return 搜索到的用户列表
+     */
+    @Override
+    public List<User> searchUserByTags(List<String> tagNameList) {
+        // 如果查询标签为空，直接返回异常信息，否则创建查询
+        if (CollectionUtils.isEmpty(tagNameList)){
+            throw new BusinessException(ErrorCode.PARAM_ERROR);
+        }
+
+        // 法二：直接在内存中查询(灵活)
+        // 1.先查询所有用户
+        QueryWrapper<User> queryWrapper = new QueryWrapper<>();
+        List<User> userList = userMapper.selectList(queryWrapper);
+        // 使用Gson反序列化,把JSON转化为java对象
+        Gson gson = new Gson();
+        // 2.再在内存中判断是否包含要求的标签
+        // 2.1 使用stream流的filter方法过滤掉不需要的用户
+        return userList.stream().filter(user -> {
+
+            // 2.2 先获取用户的标签
+            String tagsStr = user.getTags();
+            // 所有用户都要先判断是否有tags
+            if (StringUtils.isBlank(tagsStr)){
+                return false;
+            }
+            // 将tagsStr转化为集合set，但Gson不能直接转化为set，需要定义一个类型转化器TypeToken
+            Set<String> tempTagNameList = gson.fromJson(tagsStr, new TypeToken<Set<String>>() {
+            }.getType());
+            // 现在才能反序列化
+            // gson.toJson(tempTagNameList);
+
+            // 2.3 遍历用户传入的标签名称TagName
+            for (String tagName : tagNameList){
+                // 判断用户标签集合中是否包含传入的标签名称tagName,满足则返回true,没有返回false
+                if (!tempTagNameList.contains(tagName)){
+                    return false;
+                }
+            }
+            return true;
+        }).map(user -> {
+            return getSafetyUser(user);
+        }).collect(Collectors.toList());
+        // 上面map部分：stream流的map方法是 对于userList中每一个user，要脱敏后输出一个新的列表
     }
 }
 

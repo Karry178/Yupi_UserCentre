@@ -29,6 +29,11 @@ public class User {
     private String userAccount;
 
     /**
+     * 标签列表
+     */
+    private String tags;
+
+    /**
      * 用户头像
      */
     private String avatarUrl;

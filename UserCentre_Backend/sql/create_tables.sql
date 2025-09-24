@@ -5,6 +5,7 @@ create table user
         primary key,
     username     varchar(256)                       null comment '用户名',
     userAccount  varchar(256)                       null comment '登录账号',
+    tags         varchar(1024)                      null comment '标签json列表,["xx","xx",...]',
     avatarUrl    varchar(1024)                      null comment '用户头像',
     gender       tinyint                            null comment '性别',
     userPassword varchar(512)                       not null comment '密码',

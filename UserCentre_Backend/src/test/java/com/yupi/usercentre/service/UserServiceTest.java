@@ -5,8 +5,12 @@
  import org.springframework.boot.test.context.SpringBootTest;
  import org.springframework.test.annotation.Rollback;
  import org.springframework.transaction.annotation.Transactional;
+ import org.springframework.util.Assert;
 
  import javax.annotation.Resource;
+
+ import java.util.Arrays;
+ import java.util.List;
 
  import static org.junit.jupiter.api.Assertions.*;
 
@@ -35,6 +39,16 @@
          System.out.println(user.getId());
          // 加入断言,result为true才表示测试通过,否则表示测试失败
          assertTrue(result);
+     }
+
+     @Test
+     public void testSearchUserByTags(){
+         // 创建测试数据
+         List<String> tagNameList = Arrays.asList("java","python");
+         // 通过Service层查询创建好的测试数据tagNameList
+         List<User> userList = userService.searchUserByTags(tagNameList);
+         // 断言
+         assertNotNull(userList);
      }
 
  }
