@@ -3,18 +3,47 @@ server:
   servlet:
     # 给后台服务都加上api前缀
     context-path: /api
+    # 配置cookie
+    session:
+      cookie:
+        domain: localhost  # 设置为localhost，适配本地开发
+        path: /api         # 与context-path保持一致
+        max-age: 86400     # 24小时
+        http-only: true    # 安全设置
+        secure: false      # HTTP环境设为false
+        same-site: lax     # 跨站策略
+        
+# 工作流程：
+# 浏览器(localhost:3000) 
+#     ↓ (cookie domain: localhost)
+# Spring Boot(localhost:8080) 
+#     ↓ (redis host: 192.168.0.103)
+# Redis服务器(192.168.0.103:6379)
+
 
 spring:
   application:
     name: UserCentre
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://localhost:3306/yupi_universe?useUnicode=true&characterEncoding=utf8&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=GMT%2B8
-    username: root
+    url: jdbc:mysql://192.168.0.103:3306/yupi_universe?useUnicode=true&characterEncoding=utf8&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=GMT%2B8
+    username: yupi_universe
     password: 123456
-  # session:失效时间
+  # session:失效时间(86400min = 2个月)
   session:
     timeout: 86400
+    store-type: redis
+
+  # redis 配置(这次使用103虚拟机的redis连接)
+  redis:
+    port: 6379
+    host: 192.168.0.103
+    database: 0
+    password: 123456
+
+  mvc:
+    pathmatch:
+      matching-strategy: ant_path_matcher
 
 # MyBatis-Plus配置
 mybatis-plus:

@@ -4,9 +4,9 @@ import java.util.Date;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.google.gson.Gson;
-import com.google.gson.TypeAdapter;
 import com.google.gson.reflect.TypeToken;
 import com.yupi.usercentre.common.ErrorCode;
+import com.yupi.usercentre.constant.UserConstant;
 import com.yupi.usercentre.exception.BusinessException;
 import com.yupi.usercentre.model.domain.User;
 import com.yupi.usercentre.service.UserService;
@@ -26,7 +26,6 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import static com.yupi.usercentre.constant.UserConstant.USER_LOGIN_STATE;
-import static net.sf.jsqlparser.util.validation.metadata.NamedObject.user;
 
 /**
 * @author 17832
@@ -40,7 +39,6 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     // 注入UserMapper,可以操作数据库
     @Resource
     private UserMapper userMapper;
-
     // 盐值：混淆密码
     private static final String SALT = "yupi";
 
@@ -209,8 +207,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         safetyUser.setEmail(originUser.getEmail());
         safetyUser.setUserStatus(0);
         safetyUser.setUserRole(originUser.getUserRole());
-        // safetyUser.setCreateTime(new Date());
-        safetyUser.setUpdateTime(new Date());
+        safetyUser.setCreateTime(new Date());
+        // safetyUser.setUpdateTime(new Date());
         safetyUser.setIsDelete(0);
         safetyUser.setPlanetCode(originUser.getPlanetCode());
         safetyUser.setTags(originUser.getTags());
@@ -305,6 +303,107 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
             return getSafetyUser(user);
         }).collect(Collectors.toList());
         // 上面map部分：stream流的map方法是 对于userList中每一个user，要脱敏后输出一个新的列表
+    }
+
+
+
+    @Override
+    public int updateUser(User user,User loginUser) {
+        // 先获取用户id，判断id是否合法(是否<=0)
+        Long userId = user.getId();
+        // 用户id存在才可以更新
+        if (userId <= 0){
+            throw new BusinessException(ErrorCode.PARAM_ERROR);
+        }
+
+        // todo 补充校验：如果用户没有传任何需要更新的值，直接报错
+        // 直接定义一个Service方法，判断用户是否合法
+        // 调用hasUpdateFields方法判断是否有更新字段
+        if (!hasUpdateFields(user)){
+            throw new BusinessException(ErrorCode.PARAM_ERROR,"你没输入要更新的值");
+        }
+
+        // 如果是管理员，允许更新任意用户（被合并到下面了）
+        /*if (isAdmin(loginUser)){
+            // id>0,说明有可能存在,则通过数据库查询到oldUser(Mapper层可以查Service层)
+            User oldUser = userMapper.selectById(userId);
+            // 2.如果这个查到的用户不存在，则返回错误
+            if (oldUser == null){
+                throw new BusinessException(ErrorCode.NULL_ERROR);
+            }
+            // 3.如果用户存在，则更新，先获取其id，然后通过Mapper更新
+              // 通过存在的id给要修改的目标user,然后Mapper
+            return userMapper.updateById(user);
+        }*/
+
+        // 如果不是管理员，只能更新自己信息
+        if (!isAdmin(loginUser) && userId != loginUser.getId()){
+            // 1.如果不是管理员 -> 且修改的id与自己登录的id不一致，则返回没权限
+            if (userId != loginUser.getId()){
+                throw new BusinessException(ErrorCode.NO_AUTH);
+            }
+        }
+          // 2.如果是管理员 或者 虽然不是管理员但是id一致，则可以更新，直接按照上面方法修改信息
+        // id>0,说明有可能存在,则通过数据库查询到oldUser(Mapper层可以查Service层)
+        User oldUser = userMapper.selectById(userId);
+            // 2.如果这个查到的用户不存在，则返回错误
+        if (oldUser == null){
+            throw new BusinessException(ErrorCode.NULL_ERROR);
+        }
+            // 3.如果用户存在，则更新，先获取其id，然后通过Mapper更新
+        // 通过存在的id给要修改的目标user,然后Mapper
+        return userMapper.updateById(user);
+
+    }
+
+
+    /**
+     * 获取当前登录用户
+     * @param request 请求
+     * @return 当前登录用户
+     */
+    @Override
+    public User getLoginUser(HttpServletRequest request) {
+        if (request == null){
+            return null;
+        }
+        // 获取当前登录用户身份状态
+        Object userObj = request.getSession().getAttribute(USER_LOGIN_STATE);
+        // 判断当前用户是否有权限
+        if (userObj == null){
+            throw new BusinessException(ErrorCode.NO_AUTH);
+        }
+        return (User)userObj;
+    }
+
+
+    /**
+     * 判断当前用户是否是管理员
+     * @param loginUser
+     * @return true/false
+     */
+    @Override
+    public boolean isAdmin(User loginUser){
+        // 仅管理员可查询
+        // 1.鉴权
+        return loginUser != null && loginUser.getUserRole() == UserConstant.ADMIN_ROLE;
+    }
+
+
+    /**
+     * 判断用户是否有更新字段
+     * @param user
+     * @return true/false
+     */
+    @Override
+    public boolean hasUpdateFields(User user){
+        return StringUtils.isNotBlank(user.getUsername()) ||
+               StringUtils.isNotBlank(user.getAvatarUrl()) ||
+               StringUtils.isBlank(user.getTags()) ||
+               // StringUtils.isNotBlank(user.getGender()) || gender是整型，不能用StringUtils.isNotBlank()
+               user.getGender() != null ||
+               StringUtils.isNotBlank(user.getPhone()) ||
+               StringUtils.isNotBlank(user.getEmail());
     }
 }
 

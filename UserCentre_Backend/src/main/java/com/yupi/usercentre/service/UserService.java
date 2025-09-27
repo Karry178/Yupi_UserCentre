@@ -1,6 +1,7 @@
 package com.yupi.usercentre.service;
 
 import com.baomidou.mybatisplus.extension.service.IService;
+import com.yupi.usercentre.common.BaseResponse;
 import com.yupi.usercentre.model.domain.User;
 
 import javax.servlet.http.HttpServletRequest;
@@ -55,6 +56,38 @@ public interface UserService extends IService<User> {
      * @return 搜索到的用户列表
      */
     public List<User> searchUserByTags(List<String> tagNameList);
+
+
+    /**
+     * 更新用户信息
+     * @param user
+     * @return
+     */
+    int updateUser(User user,User loginUser);
+
+
+    /**
+     * 获取当前登录用户,从前端请求中获取cookie，然后从session中获取用户信息
+     * @param request
+     * @return
+     */
+    User getLoginUser(HttpServletRequest request);
+
+
+    /**
+     * 判断当前用户是否是管理员
+     * @param loginUser
+     * @return true/false
+     */
+    boolean isAdmin(User loginUser);
+
+
+    /**
+     * 判断当前用户是否是更新字段
+     * @param user
+     * @return true/false
+     */
+    boolean hasUpdateFields(User user);
 }
 
 
