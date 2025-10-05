@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
+import com.yupi.usercentre.common.BaseResponse;
 import com.yupi.usercentre.common.ErrorCode;
 import com.yupi.usercentre.constant.UserConstant;
 import com.yupi.usercentre.exception.BusinessException;
@@ -13,9 +14,11 @@ import com.yupi.usercentre.service.UserService;
 import com.yupi.usercentre.mapper.UserMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.data.domain.Page;
 import org.springframework.util.CollectionUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.util.DigestUtils;
+import org.springframework.web.bind.annotation.GetMapping;
 
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
@@ -306,7 +309,12 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     }
 
 
-
+    /**
+     * 更新用户信息
+     * @param user
+     * @param loginUser
+     * @return 更新结果
+     */
     @Override
     public int updateUser(User user,User loginUser) {
         // 先获取用户id，判断id是否合法(是否<=0)

@@ -1,6 +1,7 @@
 package com.yupi.usercentre.controller;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.yupi.usercentre.common.BaseResponse;
 import com.yupi.usercentre.common.ErrorCode;
 import com.yupi.usercentre.common.ResultUtils;
@@ -9,12 +10,16 @@ import com.yupi.usercentre.model.domain.User;
 import com.yupi.usercentre.model.domain.request.UserLoginRequest;
 import com.yupi.usercentre.model.domain.request.UserRegisterRequest;
 import com.yupi.usercentre.service.UserService;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.web.bind.annotation.*;
 
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import org.springframework.util.CollectionUtils; // Spring Framework 提供的工具类
 
@@ -31,11 +36,16 @@ import static com.yupi.usercentre.constant.UserConstant.USER_LOGIN_STATE;
         origins = "http://localhost:3000",
         allowCredentials = "true"
 )
+@Slf4j
 public class UserController {
 
-    // controller层要调用Service层
+    // controller层要调用Service层,引入Service层
     @Resource
     private UserService userService;
+
+    // 引入RedisTemplate
+    @Resource
+    private RedisTemplate<String,Object> redisTemplate;
 
 
     /**
@@ -171,6 +181,48 @@ public class UserController {
         }
         List<User> userList = userService.searchUserByTags(tagNameList);
         return ResultUtils.success(userList);
+    }
+
+
+    @GetMapping("/recommend")
+    public BaseResponse<Page<User>> recommendUsers(long pageSize, long pageNum,HttpServletRequest request){
+        // 获取当前登录的用户id
+        User loginUser = userService.getLoginUser(request);
+        // 定义缓存key的格式，格式为：yupao:user:recommend:userId
+        String redisKey = String.format("yupao:user:recommend:%s", loginUser.getId());
+        // 定义缓存的
+        ValueOperations<String, Object> valueOperations = redisTemplate.opsForValue();
+
+        // 1.先判断有无缓存，有就直接读缓存
+          // 获取缓存中的数据
+        Page<User> userPage = (Page<User>)valueOperations.get(redisKey);
+        if (userPage != null){
+            return ResultUtils.success(userPage);
+        }
+
+        // 2.缓存中没有，再从数据库中查询
+        QueryWrapper<User> queryWrapper = new QueryWrapper<>();
+        // 调用userService层方法连接数据库进行分页查询
+        userPage = userService.page(new Page<>(pageNum, pageSize), queryWrapper);
+
+        // 3.将数据写入缓存，设置30分钟过期时间
+        try {
+            valueOperations.set(redisKey, userPage, 30, TimeUnit.MINUTES);
+        } catch (Exception e) {
+            log.error("redis set key error", e);
+        }
+
+
+        // 对分页结果中的每个用户进行脱敏处理
+        List<User> safetyUserList = userPage.getRecords().stream().map(user -> {
+            // 用户脱敏
+            return userService.getSafetyUser(user);
+        }).collect(Collectors.toList());
+        
+        // 重新设置脱敏后的用户列表到分页对象中
+        userPage.setRecords(safetyUserList);
+        
+        return ResultUtils.success(userPage);
     }
 
 

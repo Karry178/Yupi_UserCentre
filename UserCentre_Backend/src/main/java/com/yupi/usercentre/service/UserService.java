@@ -3,6 +3,7 @@ package com.yupi.usercentre.service;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.yupi.usercentre.common.BaseResponse;
 import com.yupi.usercentre.model.domain.User;
+import org.springframework.data.domain.Page;
 
 import javax.servlet.http.HttpServletRequest;
 import java.util.List;
