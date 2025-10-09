@@ -6,8 +6,8 @@ import java.io.Serializable;
 import java.util.Date;
 
 /**
- * 创建新增队伍请求
- * 目的是创建一个新增队伍的封装类，返回给前端特定的参数
+ * 创建用户加入队伍请求
+ * 目的是创建一个用户加入队伍的封装类，返回给前端特定的参数
  */
 @Data
 public class TeamJoinRequest implements Serializable {
