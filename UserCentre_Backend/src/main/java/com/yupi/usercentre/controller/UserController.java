@@ -7,8 +7,8 @@ import com.yupi.usercentre.common.ErrorCode;
 import com.yupi.usercentre.common.ResultUtils;
 import com.yupi.usercentre.exception.BusinessException;
 import com.yupi.usercentre.model.domain.User;
-import com.yupi.usercentre.model.domain.request.UserLoginRequest;
-import com.yupi.usercentre.model.domain.request.UserRegisterRequest;
+import com.yupi.usercentre.model.request.UserLoginRequest;
+import com.yupi.usercentre.model.request.UserRegisterRequest;
 import com.yupi.usercentre.service.UserService;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -23,11 +23,9 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import org.springframework.util.CollectionUtils; // Spring Framework 提供的工具类
 
-import static com.yupi.usercentre.constant.UserConstant.ADMIN_ROLE;
-import static com.yupi.usercentre.constant.UserConstant.USER_LOGIN_STATE;
 
-/*
-控制层封装请求：
+/**
+ * 用户接口
  */
 @RestController
 @RequestMapping("/user")

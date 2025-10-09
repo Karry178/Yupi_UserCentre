@@ -1,20 +1,19 @@
-package com.yupi.usercentre.model.domain;
+package com.yupi.usercentre.model.vo;
 
-import com.baomidou.mybatisplus.annotation.*;
+import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableLogic;
 
-import java.io.Serializable;
 import java.util.Date;
-import lombok.Data;
 
 /**
- * 用户
- * @TableName user
+ * 用户包装类（脱敏）
+ * VO 是 View Object 的简称，即返回给前端的数据对象
+ *
+ * @author 17832
  */
-@TableName(value ="user")
-@Data
-public class User implements Serializable {
-    
-    private static final long serialVersionUID = 2L;
+public class UserVO {
+
     /**
      * 学号
      */
@@ -45,11 +44,6 @@ public class User implements Serializable {
      * 性别
      */
     private Integer gender;
-
-    /**
-     * 密码
-     */
-    private String userPassword;
 
     /**
      * 手机号
@@ -92,6 +86,5 @@ public class User implements Serializable {
     /**
      * 编程导航编号
      */
-    @TableField("PlanetCode")
     private String planetCode;
 }

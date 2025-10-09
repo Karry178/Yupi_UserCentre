@@ -88,7 +88,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
 
           // 1.3 编程导航编号不能重复
         QueryWrapper<User> wrapperCode = new QueryWrapper<>();
-        wrapperCode.eq("planetCode",planetCode);
+        wrapperCode.eq("PlanetCode",planetCode);
         long countCode = userMapper.selectCount(wrapperCode);
         if (countCode > 0){
             // return -1;
@@ -122,7 +122,11 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
           // 加入判断，保存失败就返回-1
         if (!saveResult) {
             // return -1;
-            throw new BusinessException(ErrorCode.PARAM_ERROR);
+            throw new BusinessException(ErrorCode.PARAM_ERROR,"插入数据失败");
+        }
+        // 修复：检查id是否回填成功
+        if (user.getId() == null) {
+            throw new BusinessException(ErrorCode.SYSTEM_ERROR,"注册失败，未获取到用户id");
         }
         return user.getId();
     }
