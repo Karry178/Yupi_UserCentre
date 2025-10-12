@@ -3,7 +3,9 @@ package com.yupi.usercentre.model.vo;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableLogic;
+import lombok.Data;
 
+import java.io.Serializable;
 import java.util.Date;
 
 /**
@@ -12,7 +14,10 @@ import java.util.Date;
  *
  * @author 17832
  */
-public class UserVO {
+@Data
+public class UserVO implements Serializable {
+    
+    private static final long serialVersionUID = 1L;
 
     /**
      * 学号

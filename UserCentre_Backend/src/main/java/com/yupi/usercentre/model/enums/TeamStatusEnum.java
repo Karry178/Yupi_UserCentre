@@ -16,9 +16,11 @@ public enum TeamStatusEnum {
     private String text;
 
     // 2.写枚举类方法
-    public static TeamStatusEnum getEnumByValue(int value){
-        // 如果枚举值不存在，则返回null
-        if (value == 0) return null;
+    public static TeamStatusEnum getEnumByValue(Integer value){
+        // 如果枚举值为null，则返回null
+        if (value == null) {
+            return null;
+        }
         // 遍历枚举类，找到对应的枚举值
         TeamStatusEnum[] values = TeamStatusEnum.values();
         for (TeamStatusEnum teamStatusEnum : values){

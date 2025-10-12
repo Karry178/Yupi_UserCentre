@@ -161,6 +161,12 @@ public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team>
                 queryWrapper.eq("id",id); // 获取队伍Id
             }
 
+            // 新加：获取用户加入的队伍列表
+            List<Long> idList = teamQuery.getIdList();
+            if (idList != null && !idList.isEmpty()) {
+                queryWrapper.in("id",idList);
+            }
+
             String searchText = teamQuery.getSearchText();
             if (StringUtils.isNotBlank(searchText)) {
                 // 使用and连接两个模糊查询：可以通过name，也可以通过description 模糊查询
@@ -190,23 +196,21 @@ public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team>
 
             // 根据队伍状态查询
             Integer status = teamQuery.getStatus();
-              // 先把statusEnum设置为默认PUBLIC状态
-            TeamStatusEnum statusEnum = TeamStatusEnum.PUBLIC;
-            // 如果status非空了，才获取状态
-            if (status != null) {
-                statusEnum = TeamStatusEnum.getEnumByValue(status);
-                // 如果状态枚举值为空，则默认为PUBLIC状态
-                if (statusEnum == null){
-                    statusEnum = TeamStatusEnum.PUBLIC; // 如果status为null，则默认为公开
+            TeamStatusEnum statusEnum = TeamStatusEnum.getEnumByValue(status);
+            
+            // 如果指定了状态
+            if (statusEnum != null) {
+                // 如果当前登录用户不是管理员且状态不是公开，则不能查询
+                if (!isAdmin && !statusEnum.equals(TeamStatusEnum.PUBLIC)){
+                    throw new BusinessException(ErrorCode.NO_AUTH);
                 }
+                // 添加状态过滤条件
+                queryWrapper.eq("status", statusEnum.getValue());
+            } else if (!isAdmin) {
+                // 如果没有指定状态，且当前用户不是管理员，只能查询公开的队伍
+                queryWrapper.eq("status", TeamStatusEnum.PUBLIC.getValue());
             }
-
-            // 如果当前登录用户不是管理员且状态不是公开，则不能查询
-            if (!isAdmin && !statusEnum.equals(TeamStatusEnum.PUBLIC)){
-                throw new BusinessException(ErrorCode.NO_AUTH);
-            }
-            // 从statusEnum中获取value 枚举值 -> 目的是获取状态
-            queryWrapper.eq("status",statusEnum.getValue());
+            // 如果是管理员且没有指定状态，则不添加status过滤条件，可以查询所有状态的队伍
         }
 
         // 不能展示已经过期的队伍  expireTime is null or expireTime > now()
@@ -252,7 +256,8 @@ public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team>
             }
             teamUserVOList.add(teamUserVO);
         }
-        return Collections.emptyList();
+        
+        return teamUserVOList;
     }
 
 
@@ -282,9 +287,9 @@ public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team>
         if (!oldTeam.getUserId().equals(loginUser.getId()) && !userService.isAdmin(loginUser)) {
             throw new BusinessException(ErrorCode.NO_AUTH);
         }
-        // 5.判断：如果队伍状态改为私有，必须要有密码
+        // 5.判断：如果队伍状态改为加密，必须要有密码
         TeamStatusEnum statusEnum = TeamStatusEnum.getEnumByValue(teamUpdateRequest.getStatus());
-        if (statusEnum.equals(TeamStatusEnum.SECRET)) {
+        if (TeamStatusEnum.SECRET.equals(statusEnum)) {
             // 5.1 没有传递密码
             if (StringUtils.isBlank(teamUpdateRequest.getPassword())) {
                 throw new BusinessException(ErrorCode.PARAM_ERROR,"加密队伍的话，必须要有密码");
@@ -328,7 +333,7 @@ public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team>
           // 2.5 获取当前队伍的状态 -> 禁止加入私有的队伍 -> 或者有密码的话，密码正确才可以加入需要密码的队伍
         Integer status = team.getStatus();
         TeamStatusEnum teamStatusEnum = TeamStatusEnum.getEnumByValue(status);// 获取当前队伍的状态的枚举值
-        if (TeamStatusEnum.PRIVATE.equals(status)) { // 要保证非空的放在equal前面
+        if (TeamStatusEnum.PRIVATE.equals(teamStatusEnum)) { // 要保证非空的放在equal前面
             throw new BusinessException(ErrorCode.PARAM_ERROR,"禁止加入私有队伍");
         }
         String password = teamJoinRequest.getPassword();
