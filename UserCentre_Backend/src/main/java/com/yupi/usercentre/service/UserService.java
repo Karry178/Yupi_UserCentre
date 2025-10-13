@@ -1,9 +1,7 @@
 package com.yupi.usercentre.service;
 
 import com.baomidou.mybatisplus.extension.service.IService;
-import com.yupi.usercentre.common.BaseResponse;
 import com.yupi.usercentre.model.domain.User;
-import org.springframework.data.domain.Page;
 
 import javax.servlet.http.HttpServletRequest;
 import java.util.List;
@@ -89,6 +87,15 @@ public interface UserService extends IService<User> {
      * @return true/false
      */
     boolean hasUpdateFields(User user);
+
+
+    /**
+     * 找到最匹配的用户
+     * @param num 匹配用户数量
+     * @param loginUser 当前登录用户
+     * @return 匹配的用户列表
+     */
+    List<User> matchUsers(Long num, User loginUser);
 }
 
 

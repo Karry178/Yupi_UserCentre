@@ -26,6 +26,11 @@ myAxios.interceptors.response.use(function (response) {
     console.log("我收到你的响应了！",response)
     // 2xx 范围内的状态码都会触发该函数。
     // 对响应数据做点什么,全部都返回其data
+
+    // 40100:未登录，如果40100，则跳转到登录页面
+    if (response?.data?.code === 40100){
+        window.location.href = '/user/login';
+    }
     return response.data;
 }, function (error) {
     // 超出 2xx 范围的状态码都会触发该函数。

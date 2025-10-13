@@ -1,6 +1,6 @@
 <template>
   <van-nav-bar
-      title="标题"
+      :title="title"
       left-arrow
       @click-left="onClickLeft"
       @click-right="onClickRight"
@@ -30,12 +30,43 @@
 </template>
 
 
-<script setup>
+<script setup lang="ts">
   import { Toast } from "vant";
-  import { useRouter } from "vue-router";
+  import { ref } from "vue";
+  import { useRouter, useRoute } from "vue-router";
+  import routes from "../config/route.ts";  // ✅ 导入 routes
+
 
   // 顶部导航栏
   const router = useRouter()
+  const route = useRoute()
+  const DEFAULT_TITLE = "伙伴匹配";
+  const title = ref(DEFAULT_TITLE);
+
+  /**
+   * 路由监听的钩子函数
+   * 功能：根据路由配置，切换标题
+    */
+
+  router.beforeEach((to, from, next) => {
+    console.log('路由跳转', to.path)
+
+    // 查找路由配置
+    const toPath = to.path;
+    const targetRoute = routes.find((route) => {
+      return toPath === route.path;
+    })
+    // 更新队伍页的标题
+    if (targetRoute?.title) { // 如果route存在或者有title，就使用路由配置的标题
+      title.value = targetRoute.title;
+    } else {
+      // 否则返回默认标题
+      title.value = DEFAULT_TITLE;
+    }
+
+    next() // 允许导航继续
+  })
+
   const onClickLeft = () => {
     router.back();
   };
@@ -43,9 +74,6 @@
     router.push('/search')
   };
 
-  // 底部导航栏
-  // const active = ref(0);
-  const onChange = (index) => Toast(`标签 ${index}`);
 </script>
 
 

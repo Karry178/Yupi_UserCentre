@@ -1,4 +1,6 @@
 <template>
+  <!-- 骨架屏：展示子组件 -->
+  <van-skeleton title avatar :row="3" :loading="props.loading" />
   <van-card
       v-for="user in props.userList"
       :desc="user.profile"
@@ -21,11 +23,15 @@
 
 <script setup lang="ts">
 import type {UserType} from "../models/user";
+import {Toast} from "vant";
+
 
 interface UserCardListProps {
   userList: UserType[];
 }
 const props = withDefaults(defineProps<UserCardListProps>(), {
+  loading: true,
+
   // 使用@ts-ignore忽略ts的类型检查
   // @ts-ignore
   // 添加一个默认值

@@ -25,14 +25,19 @@
       </div>
     </template>
     <template #footer>
-      <van-button size="small" type="primary" plain @click="doJoinTeam(team.id)">加入队伍</van-button>
+      <!-- 加入队伍：仅非创建者可见 -->
+      <van-button size="small" type="primary" v-if="team.userId !== currentUser?.id && team.hasJoin" plain
+                  @click="doJoinTeam(team.id)">加入队伍</van-button>
+      <!-- 更新队伍：仅创建者可见 -->
       <van-button v-if="team.userId === currentUser?.id" size="small" plain
                   @click="doUpdateTeam(team.id)">更新队伍</van-button>
 
-      <!-- todo 仅加入队伍可见 -->
-      <van-button size="small" plain
+      <!-- 退出队伍：仅加入队伍的人可见，创建人不可见 -->
+      <van-button size="small" v-if="team.hasJoin" plain
                   @click="doQuitTeam(team.id)">退出队伍</van-button>
-      <van-button size="small" plain
+
+      <!-- 解散队伍：仅创建者可见 -->
+      <van-button size="small" v-if="team.userId === currentUser?.id" type="danger" plain
                   @click="doDeleteTeam(team.id)">解散队伍</van-button>
     </template>
     {{ '当前用户' + currentUser }}

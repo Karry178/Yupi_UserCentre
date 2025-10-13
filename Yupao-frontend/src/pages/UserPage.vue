@@ -46,20 +46,9 @@ import { getCurrentUser } from "../services/user.ts";
 import iKun from '../assets/坤lemon.jpg';
 
 
+const user = ref();
+
 const router = useRouter();
-// const user = computed(() => getCurrentUserState()); // 使用全局状态
-
-const user = ref({
-  username: '',
-  userAccount: '',
-  avatarUrl: '',
-  gender: '',
-  phone: '',
-  email: '',
-  planetCode: '',
-  createTime: ''
-});
-
 
 onMounted(async () => {
   console.log('用户详情页面加载完毕')
@@ -71,6 +60,19 @@ onMounted(async () => {
 const toUpdate = () => {
   router.push('/user/update');
 };
+
+const toEdit = (editKey: string, editName: string, currentValue: string) => {
+  router.push({
+    // 跳转到主页
+    path: '/user/edit',
+    // 查询传参
+    query: {
+      editKey,
+      editName,
+      currentValue,
+    }
+  })
+}
 </script>
 
 

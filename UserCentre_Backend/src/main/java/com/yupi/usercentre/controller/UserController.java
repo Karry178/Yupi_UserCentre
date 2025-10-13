@@ -9,6 +9,7 @@ import com.yupi.usercentre.exception.BusinessException;
 import com.yupi.usercentre.model.domain.User;
 import com.yupi.usercentre.model.request.UserLoginRequest;
 import com.yupi.usercentre.model.request.UserRegisterRequest;
+import com.yupi.usercentre.model.vo.UserVO;
 import com.yupi.usercentre.service.UserService;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -182,6 +183,14 @@ public class UserController {
     }
 
 
+    // todo 推荐多个用户 未匹配
+    /**
+     * 主页推荐多个用户
+     * @param pageSize
+     * @param pageNum
+     * @param request
+     * @return
+     */
     @GetMapping("/recommend")
     public BaseResponse<Page<User>> recommendUsers(long pageSize, long pageNum,HttpServletRequest request){
         // 获取当前登录的用户id
@@ -268,5 +277,21 @@ public class UserController {
     }
 
 
-
+    /**
+     * 获取最为匹配的用户
+     * @param num 匹配用户数量
+     * @param request 前端请求
+     * @return 返回匹配的用户列表(脱敏后的User)
+     */
+    @GetMapping("/match")
+    public BaseResponse<List<User>> matchUsers(Long num, HttpServletRequest request){
+        // 1.限制查询到的用户数量！(防止无限制查询，窃取数据库内容)
+        if (num <= 0 || num > 20) {
+            throw new BusinessException(ErrorCode.PARAM_ERROR);
+        }
+        // 2.如果满足条件，获取当前登录用户后，调用Service层方法进行匹配
+        User loginUser = userService.getLoginUser(request);
+        List<User> userList = userService.matchUsers(num, loginUser);
+        return ResultUtils.success(userList);
+    }
 }

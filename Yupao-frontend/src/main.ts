@@ -34,8 +34,8 @@ app.use(Vant);
 //创建路由实例并传递routes配置
 // 你可以在这里输入更多的配置，但我们在这里暂时保持简单
 const router = VueRouter.createRouter({
-    //4.内部提供了 history模式的实现。为了简单起见，我们在这里使用 hash 模式。
-    history: VueRouter.createWebHashHistory(),
+    //4.内部提供了 history模式的实现。
+    history: VueRouter.createWebHistory(),
     routes, //routes:routes′的缩写
  })
 // 添加路由

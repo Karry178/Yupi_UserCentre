@@ -20,7 +20,6 @@ import com.yupi.usercentre.service.TeamService;
 import com.yupi.usercentre.service.UserService;
 import com.yupi.usercentre.service.UserTeamService;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.catalina.WebResourceRoot;
 import org.springframework.beans.BeanUtils;
 import org.springframework.web.bind.annotation.*;
 
@@ -29,6 +28,7 @@ import javax.servlet.http.HttpServletRequest;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 
@@ -86,7 +86,7 @@ public class TeamController {
 
     /**
      * 通过队伍Id删除队伍
-     * @param id
+     * @param deleteRequest
      * @param request
      * @return
      */
@@ -154,16 +154,44 @@ public class TeamController {
      * @return
      */
     @GetMapping("/list")
-    public BaseResponse<List<TeamUserVO>> listTeams(TeamQuery teamQuery,HttpServletRequest request){
+    public BaseResponse<List<TeamUserVO>> listTeams(TeamQuery teamQuery, HttpServletRequest request){
         // 1.边界检测
         if (teamQuery == null) {
             throw new BusinessException(ErrorCode.PARAM_ERROR);
         }
 
-        // 2.获取当前登录用户 -> 如果登录用户是管理员
+        // 2.获取当前登录用户 -> 判断是否是管理员
         User loginUser = userService.getLoginUser(request);
         boolean isAdmin = userService.isAdmin(loginUser);
+
+        // 3.调用Service层查询队伍列表
         List<TeamUserVO> teamList = teamService.listTeams(teamQuery, isAdmin);
+
+        /**
+         * 4.判断当前用户是否已加入上述队伍 -> 使用stream流遍历
+         * 使用 Stream 流提取队伍 ID
+         * 流程图解说明：
+         * 详细流程请参考：src/main/java/com/yupi/usercentre/common/stream流.png
+         * 更多示例请参考：src/main/java/com/yupi/usercentre/common/更多stream示例.png
+          */
+        List<Long> teamIdList = teamList.stream().map(TeamUserVO::getId) // TeamUserVO::getId 是指在TeamUserVO类中获取id； 映射/转换 - 对流中的每个元素执行操作，转换成新的元素
+                .collect(Collectors.toList());
+        QueryWrapper<UserTeam> userTeamQueryWrapper = new QueryWrapper<>();
+        try {
+            // 如果当前用户登录了，则获取当前用户Id（已在上面获取，直接使用）
+            userTeamQueryWrapper.eq("userId",loginUser.getId());
+            userTeamQueryWrapper.in("teamId",teamIdList); // teamId必须要在已查询到的队伍列表中
+            List<UserTeam> userTeamList = UserTeamService.list(userTeamQueryWrapper);
+            // 使用stream流再次取出对应的用户id 加入的 队伍id
+            Set<Long> hasJoinTeamIdSet = userTeamList.stream().map(UserTeam::getTeamId).collect(Collectors.toSet());
+            // 遍历队伍列表，获取已加入队伍的集合
+            teamList.forEach(team -> {
+                boolean hasJoin = hasJoinTeamIdSet.contains(team.getId()); // 判断当前用户是否已加入该队伍
+                team.setHasJoin(hasJoin); // 设置当前用户是否已加入该队伍
+            });
+        } catch (Exception e) {
+
+        }
         return ResultUtils.success(teamList);
     }
 

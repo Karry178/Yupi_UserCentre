@@ -1,5 +1,5 @@
 package com.yupi.usercentre.service.impl;
-import java.util.Date;
+import java.util.*;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
@@ -10,8 +10,10 @@ import com.yupi.usercentre.common.ErrorCode;
 import com.yupi.usercentre.constant.UserConstant;
 import com.yupi.usercentre.exception.BusinessException;
 import com.yupi.usercentre.model.domain.User;
+import com.yupi.usercentre.model.vo.UserVO;
 import com.yupi.usercentre.service.UserService;
 import com.yupi.usercentre.mapper.UserMapper;
+import com.yupi.usercentre.utils.AlgorithmUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.data.domain.Page;
@@ -22,11 +24,10 @@ import org.springframework.web.bind.annotation.GetMapping;
 
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
-import java.util.List;
-import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static com.yupi.usercentre.constant.UserConstant.USER_LOGIN_STATE;
 
@@ -416,6 +417,98 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
                user.getGender() != null ||
                StringUtils.isNotBlank(user.getPhone()) ||
                StringUtils.isNotBlank(user.getEmail());
+    }
+
+
+    /**
+     * 找到最匹配的用户
+     * @param num 最多返回多少条数据
+     * @param loginUser 当前登录用户
+     * @return 匹配的用户列表
+     */
+    @Override
+    public List<User> matchUsers(Long num, User loginUser) {
+        // TODO: 实现用户匹配逻辑
+
+        // 0.创建查询条件，并通过Service层获取通过查询条件的用户列表
+        QueryWrapper<User> queryWrapper = new QueryWrapper<>();
+        queryWrapper.isNotNull("tags"); // 获取用户列表中不为空的标签
+        // queryWrapper.select("id","tags"); // 获取用户列表中的id和tags两列
+        List<User> userList = this.list(queryWrapper);
+
+        // 1.获取当前登录用户的标签tags
+        String tags = loginUser.getTags();
+        // 2.通过Gson将标签字符串转换成List
+        Gson gson = new Gson();
+        List<String> tagList = gson.fromJson(tags, new TypeToken<List<String>>() {
+        }.getType());
+
+        // 3.创建一个距离列表，用于保存用户和标签之间的距离
+            // 俩参数：key为用户列表的下标i, value为用户标签之间的距离distance
+        // SortedMap<Integer, Long> indexDistanceMap = new TreeMap<>();
+        HashMap<Integer, Long> indexDistanceMap = new HashMap<>();
+        // 4.遍历userList,并通过Gson将标签字符串转换成List
+        for (int i = 0;i < userList.size();i++) {
+            // 获取用户列表的下标 -> key为用户列表的下标，value为用户标签之间的距离
+            User user = userList.get(i);
+            // 每次获取遍历的用户标签
+            String userTags = user.getTags();
+            // 判断用户标签是否为空 或者 用户标签是登录用户 -> 跳过
+            if (StringUtils.isBlank(userTags) || user.getId().equals(loginUser.getId())) {
+                continue;
+            }
+            // 否则转换为列表
+            List<String> userTagList = gson.fromJson(userTags, new TypeToken<List<String>>() {
+            }.getType());
+
+            // 5.计算用户和标签之间的距离 -> 基于AlgorithmUtils中的最短距离算法
+            long distance = AlgorithmUtils.minDistance(tagList, userTagList);
+            // 6.将距离列表保存到indexDistanceMap中
+            indexDistanceMap.put(i, distance);
+        }
+
+        // 7.根据距离列表，从userList中取出前num个最匹配的用户
+        List<Integer> sortedIndexList = indexDistanceMap.entrySet() // entrySet() -> 获取indexDistanceMap中的全部entry，entry是key-value对
+                .stream() // 将entrySet转换成Stream流
+                .sorted(Map.Entry.comparingByValue()) // 排序 -> 根据value(距离)进行升序排序，Map.Entry是从Map中获取的entry，comparingByValue是对Value升序排序
+                .limit(num) // 获取前num个最匹配的用户
+                .map(Map.Entry::getKey) // 获取最匹配的用户的下标 -> 使用map()是因为
+                .collect(Collectors.toList());
+
+        // 8.将最匹配的用户列表转为用户VO列表 -> 即返回给前端的是脱敏后的用户列表
+        List<User> userVOList = sortedIndexList.stream()
+                .map(index -> getSafetyUser(userList.get(index))) // 使用map()提取用户 -> 自动将排序后的index转换为用户，再调用getSafetyUser()进行脱敏
+                .collect(Collectors.toList());
+
+
+        /*List<User> userVOList = new ArrayList<>();
+        int i = 0;
+        System.out.println("输出 -> 用户id：用户下标：最短距离");
+        for (Map.Entry<Integer, Long> entry : indexDistanceMap.entrySet()) {
+            if (i > num) {
+                break;
+            }
+
+            User user = userList.get(entry.getKey());
+            System.out.println(user.getId() + ":" + entry.getKey() + ":" + entry.getValue());
+            i++;
+        }*/
+        /*
+         7.根据距离列表，从userList中取出前num个最匹配的用户
+
+         indexDistanceMap.keySet().stream().limit(num).collect(Collectors.toList())
+         indexDistanceMap.keySet() -> 目的是获取indexDistanceMap中的全部key
+         加入stream().limit(num) -> 目的是获取前num个最匹配的用户
+         最后使用collect方法将结果转换为List
+         */
+        /*List<Integer> maxDistanceIndexList = indexDistanceMap.keySet().stream().limit(num).collect(Collectors.toList());
+
+        // 8.将最匹配的用户列表脱敏后返回给前端界面，要使用UserVO
+        List<User> userVOList = maxDistanceIndexList.stream()
+                .map(index -> {return getSafetyUser(userList.get(index));})
+                .collect(Collectors.toList());*/
+
+        return userVOList;
     }
 }
 

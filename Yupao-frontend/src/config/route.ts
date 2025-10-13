@@ -15,17 +15,17 @@ import UserTeamJoinPage from "../pages/UserTeamJoinPage.vue";
 //每个路由都需要映射到一个组件。我们后面再讨论嵌套路由。
 const routes = [
     { path: '/', component: IndexPage },
-    { path:'/team',component: TeamPage },
-    { path: '/team/add',component: TeamAddPage },
-    { path: '/team/update',component: TeamUpdatePage },
-    { path: '/user',component: UserPage },
-    { path: '/search',component: SearchPage },
-    { path: '/user/list',component: SearchResultPage },
-    { path: '/user/edit',component: UserEditPage },
-    { path: '/user/login',component: UserLoginPage },
-    { path: '/user/update',component: UserUpdatePage },
-    { path: '/user/team/create',component: UserTeamCreatePage },
-    { path: '/user/team/join',component: UserTeamJoinPage },
+    { path:'/team', title: '找队伍', component: TeamPage },
+    { path: '/team/add', title: '新建队伍', component: TeamAddPage },
+    { path: '/team/update', title: '更新队伍', component: TeamUpdatePage },
+    { path: '/user', title: '个人信息', component: UserPage },
+    { path: '/search', title: '找伙伴', component: SearchPage },
+    { path: '/user/list', title: '用户列表', component: SearchResultPage },
+    { path: '/user/edit', title: '编辑用户个人信息', component: UserEditPage },
+    { path: '/user/login', title: '登录', component: UserLoginPage },
+    { path: '/user/update', title: '展示当前信息', component: UserUpdatePage },
+    { path: '/user/team/create', title: '用户创建的队伍', component: UserTeamCreatePage },
+    { path: '/user/team/join', title: '用户加入的队伍', component: UserTeamJoinPage },
 
 ]
 
