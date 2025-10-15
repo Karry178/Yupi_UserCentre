@@ -62,8 +62,7 @@
 
 
 <script setup lang="ts">
-
-import { TeamType } from "../models/team";
+import type { TeamType } from "../models/team";
 import {teamStatusEnum} from "../constants/team.ts";
 import iKun from '../assets/iKun.jpg';
 import myAxios from "../plugins/myAxios.ts";
