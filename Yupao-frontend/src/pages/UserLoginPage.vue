@@ -48,6 +48,8 @@ const onSubmit = async (values) => {
     userPassword: userPassword.value,
   })
   console.log(res,'用户登录');
+  console.log('res.code类型', typeof res.code, 'res.code值', res.code)
+  console.log('res.data:', res.data);
   if (res.code === 0 && res.data) {
     Toast.success('登录成功')
     const redirectUrl = route.query?.redirect as string ?? '/'; // 通过route查询到redirect参数，如果没有就跳转到主页 (??表示前面为真取前面，否则取后面)

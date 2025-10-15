@@ -1,14 +1,33 @@
-# 部署到线上环境：主服务器192.168.0.101
+# 部署到线上环境：宝塔服务器192.168.0.103
 
 spring:
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://192.168.0.101:3306/yupi_universe?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai
-    username: "192.168.0.101"
+    url: jdbc:mysql://192.168.0.103:3306/yupi_universe?useUnicode=true&characterEncoding=utf8&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=GMT%2B8
+    username: "yupi_universe"
     password: 123456
-  # session:失效时间
+
+  redis:
+    port: 6379
+    host: 192.168.0.103
+    database: 0
+    password: 123456
+    
+  # Spring Session 配置
   session:
+    store-type: redis
     timeout: 86400
+
+# Server 配置 -> Cookie应该在server中配置，而非session中配置
+server:
+  port: 8083
+  servlet:
+    session:
+      cookie:
+        domain: 192.168.0.103  # 设置 Cookie 域名
+        path: /
+        http-only: true
+        max-age: 86400
 
 
 
