@@ -20,6 +20,8 @@ import com.yupi.usercentre.model.vo.UserVO;
 import com.yupi.usercentre.service.TeamService;
 import com.yupi.usercentre.service.UserService;
 import com.yupi.usercentre.service.UserTeamService;
+import org.redisson.api.RLock;
+import org.redisson.api.RedissonClient;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,6 +29,7 @@ import org.springframework.util.CollectionUtils;
 
 import javax.annotation.Resource;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 
 /**
 * @author 17832
@@ -44,6 +47,10 @@ public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team>
     // 引入用户表
     @Resource
     private UserService userService;
+
+    // 引入Redisson -> 目的是引入分布式锁
+    @Resource
+    private RedissonClient redissonClient;
 
     /**
      * 添加/创建队伍
@@ -201,7 +208,7 @@ public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team>
             // 如果指定了状态
             if (statusEnum != null) {
                 // 如果当前登录用户不是管理员且状态不是公开，则不能查询
-                if (!isAdmin && !statusEnum.equals(TeamStatusEnum.PUBLIC)){
+                if (!isAdmin && !statusEnum.equals(TeamStatusEnum.PRIVATE)){
                     throw new BusinessException(ErrorCode.NO_AUTH);
                 }
                 // 添加状态过滤条件
@@ -345,36 +352,59 @@ public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team>
         }
 
           // 下面为通过数据库查询的内容
-          // 2.1 查询当前用户加入队伍的数量(自己创建的也算加入)
-        Long userId = loginUser.getId();
-        QueryWrapper<UserTeam> userTeamQueryWrapper = new QueryWrapper<>();
-        userTeamQueryWrapper.eq("userId",userId);
-        long hasJoinNum = userTeamService.count(userTeamQueryWrapper);
-        if (hasJoinNum >= 5){
-            throw new BusinessException(ErrorCode.PARAM_ERROR,"最多创建和加入5个队伍");
-        }
+          // todo 加分布式锁(锁要加在对象上) -> 目的：锁进来时，可以让用户一个个的执行锁住的这段方法，避免用户加入多个队伍，导致数据错误
+            // 2.1 查询当前用户加入队伍的数量(自己创建的也算加入)
+            Long userId = loginUser.getId();
+        // 创建一个分布式锁 - redisson -> 只有一个线程能够获取到锁
+        RLock lock = redissonClient.getLock("yupao:join_team");
+        try {
+            while (true) {
+                if (lock.tryLock(0,-1, TimeUnit.MILLISECONDS)) {
+                    // 获取锁成功，打印其线程id
+                    System.out.println("getLock:" + Thread.currentThread().getId());
 
-          // 2.6 不能重复加入已加入的队伍
-        userTeamQueryWrapper = new QueryWrapper<>();
-        userTeamQueryWrapper.eq("userId",userId);
-        userTeamQueryWrapper.eq("teamId",teamId);
-        long hasUserJoinTeam = userTeamService.count(userTeamQueryWrapper);
-        if (hasUserJoinTeam > 0){
-            throw new BusinessException(ErrorCode.PARAM_ERROR,"用户已加入该队伍");
-        }
+                    QueryWrapper<UserTeam> userTeamQueryWrapper = new QueryWrapper<>();
+                    userTeamQueryWrapper.eq("userId", userId);
+                    long hasJoinNum = userTeamService.count(userTeamQueryWrapper);
+                    if (hasJoinNum >= 5) {
+                        throw new BusinessException(ErrorCode.PARAM_ERROR, "最多创建和加入5个队伍");
+                    }
 
-          // 2.7 只能加入未满人的队伍
-        long teamHasJoinNum = countTeamUserByTeamId(teamId); // 调用获取队伍人数方法
-        if (teamHasJoinNum >= team.getMaxNum()) {
-            throw new BusinessException(ErrorCode.PARAM_ERROR,"队伍已满");
-        }
+                    // 2.6 不能重复加入已加入的队伍
+                    userTeamQueryWrapper = new QueryWrapper<>();
+                    userTeamQueryWrapper.eq("userId", userId);
+                    userTeamQueryWrapper.eq("teamId", teamId);
+                    long hasUserJoinTeam = userTeamService.count(userTeamQueryWrapper);
+                    if (hasUserJoinTeam > 0) {
+                        throw new BusinessException(ErrorCode.PARAM_ERROR, "用户已加入该队伍");
+                    }
 
-        // 最后修改队伍信息 -> 新增队伍-用户关联信息
-        UserTeam userTeam = new UserTeam(); // 新增用户队伍
-        userTeam.setUserId(userId); // 把新加入的用户Id和队伍Id以及用户加入队伍的时间存起来
-        userTeam.setTeamId(teamId);
-        userTeam.setJoinTime(new Date());
-        return userTeamService.save(userTeam); // 把数据通过service层保存到数据库中
+                    // 2.7 只能加入未满人的队伍
+                    long teamHasJoinNum = countTeamUserByTeamId(teamId); // 调用获取队伍人数方法
+                    if (teamHasJoinNum >= team.getMaxNum()) {
+                        throw new BusinessException(ErrorCode.PARAM_ERROR,"队伍已满");
+                    }
+
+                    // 最后修改队伍信息 -> 新增队伍-用户关联信息
+                    UserTeam userTeam = new UserTeam(); // 新增用户队伍
+                    userTeam.setUserId(userId); // 把新加入的用户Id和队伍Id以及用户加入队伍的时间存起来
+                    userTeam.setTeamId(teamId);
+                    userTeam.setJoinTime(new Date());
+                    return userTeamService.save(userTeam); // 把数据通过service层保存到数据库中
+                }
+            }
+
+        } catch (InterruptedException e) {
+            log.error("doCacheRecommendUser error", e);
+            return false;
+        } finally {
+            // 释放锁部分
+            if (lock.isHeldByCurrentThread()) {
+                // 判断：只有当前线程持有锁，才释放锁
+                System.out.println("unLock：" + Thread.currentThread().getId());
+                lock.unlock();
+            }
+        }
     }
 
 

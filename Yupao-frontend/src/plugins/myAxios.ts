@@ -29,7 +29,8 @@ myAxios.interceptors.response.use(function (response) {
 
     // 40100:未登录，如果40100，则跳转到登录页面
     if (response?.data?.code === 40100){
-        window.location.href = '/user/login';
+        const redirectUrl = window.location.href;
+        window.location.href = `/user/login?redirect=${redirectUrl}`; // 重定向到登录界面
     }
     return response.data;
 }, function (error) {

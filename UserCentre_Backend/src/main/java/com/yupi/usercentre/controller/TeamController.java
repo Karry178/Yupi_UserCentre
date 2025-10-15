@@ -174,8 +174,9 @@ public class TeamController {
          * 详细流程请参考：src/main/java/com/yupi/usercentre/common/stream流.png
          * 更多示例请参考：src/main/java/com/yupi/usercentre/common/更多stream示例.png
           */
-        List<Long> teamIdList = teamList.stream().map(TeamUserVO::getId) // TeamUserVO::getId 是指在TeamUserVO类中获取id； 映射/转换 - 对流中的每个元素执行操作，转换成新的元素
+        final List<Long> teamIdList = teamList.stream().map(TeamUserVO::getId) // TeamUserVO::getId 是指在TeamUserVO类中获取id； 映射/转换 - 对流中的每个元素执行操作，转换成新的元素
                 .collect(Collectors.toList());
+        // 5.判断当前用户是否已加入队伍
         QueryWrapper<UserTeam> userTeamQueryWrapper = new QueryWrapper<>();
         try {
             // 如果当前用户登录了，则获取当前用户Id（已在上面获取，直接使用）
@@ -190,7 +191,17 @@ public class TeamController {
                 team.setHasJoin(hasJoin); // 设置当前用户是否已加入该队伍
             });
         } catch (Exception e) {
-
+            // 6.查询加入队伍的用户信息(人数)
+            QueryWrapper<UserTeam> userTeamJoinQueryWrapper = new QueryWrapper<>();
+            userTeamJoinQueryWrapper.in("teamId",teamIdList); // teamId必须要在已查询到的队伍列表中
+            List<UserTeam> userTeamList = UserTeamService.list(userTeamJoinQueryWrapper); // 查询所有加入队伍列表中任一队伍的用户
+            // 使用stream流对用户加入的队伍分组
+            Map<Long, List<UserTeam>> teamIdUserTeamList = userTeamList.stream().collect(Collectors.groupingBy(UserTeam::getTeamId));
+            // 给teamList中每个队伍添加上面查到的用户信息
+            teamList.forEach(team -> {
+                // getOrDefault(key, defaultValue) 获取指定键对应的值，如果键不存在则返回默认值
+                team.setHasJoinNum(teamIdUserTeamList.getOrDefault(team.getId(),new ArrayList<>()).size());
+            });
         }
         return ResultUtils.success(teamList);
     }

@@ -3,6 +3,7 @@
 import { createApp } from 'vue'
 import App from './App.vue'
 import './style.css'
+import '../global.css'
 
 // 全部导入 Vant 组件 (后期优化再精简也可以)
 import Vant from 'vant';

@@ -28,16 +28,19 @@
 </template>
 
 <script setup lang="ts">
-import {useRouter} from "vue-router";
+import { useRouter,useRoute } from "vue-router";
 import { ref } from 'vue';
 import myAxios from '../plugins/myAxios.ts';
 import { Toast } from 'vant';
 
-const router = useRouter();
+const router = useRouter(); // Router是控制页面跳转
+const route = useRoute(); // Route是获取当前页面的参数
 
 // 表单数据
 const userAccount = ref('');
 const userPassword = ref('');
+
+
 const onSubmit = async (values) => {
   // 连接后端登录界面
   const res = await myAxios.post('/user/login', {
@@ -47,8 +50,9 @@ const onSubmit = async (values) => {
   console.log(res,'用户登录');
   if (res.code === 0 && res.data) {
     Toast.success('登录成功')
+    const redirectUrl = route.query?.redirect as string ?? '/'; // 通过route查询到redirect参数，如果没有就跳转到主页 (??表示前面为真取前面，否则取后面)
     // 成功就路由跳转到主页
-    router.replace('/');
+    router.replace(redirectUrl);
   } else {
     Toast.fail('登录失败')
   }
