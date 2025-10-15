@@ -39,7 +39,7 @@ import java.util.stream.Collectors;
 @RequestMapping("/team")
 // @CrossOrigin 跨域,默认所有的域名都允许跨域访问,可以使用origins={}指定域名
 @CrossOrigin(
-        origins = "http://localhost:3000",
+        origins = {"http://localhost:3000", "http://192.168.0.103:81", "http://192.168.0.103"},
         allowCredentials = "true"
 )
 @Slf4j

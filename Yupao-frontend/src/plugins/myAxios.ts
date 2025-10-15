@@ -9,7 +9,7 @@ const myAxios = axios.create({
     // baseURL: 'http://localhost:8080/api'
     
     // 上线后
-    baseURL: 'https://192.168.0.103:8083/api'
+    baseURL: 'http://192.168.0.103:8083/api'
 });
 
 // 允许向后台发请求时携带cookie
