@@ -1,7 +1,6 @@
 package com.yupi.usercentre.common;
 
 import lombok.Data;
-
 import java.io.Serializable;
 
 /**
@@ -17,10 +16,10 @@ public class PageRequest implements Serializable {
     /**
      * 默认页面大小
      */
-    protected int pageSize = 10;
+    protected Integer pageSize = 10;
 
     /**
      * 默认当前页号
      */
-    protected int pageNum = 1;
+    protected Integer pageNum = 1;
 }

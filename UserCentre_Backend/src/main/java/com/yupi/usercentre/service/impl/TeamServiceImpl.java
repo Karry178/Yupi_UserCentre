@@ -255,6 +255,15 @@ public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team>
             // 使用Spring的BeanUtils，参数顺序是源对象，目标对象
             BeanUtils.copyProperties(team, teamUserVO);
 
+            // ========== 在这里添加查询已加入人数的代码 ==========
+            QueryWrapper<UserTeam> joinNumQueryWrapper = new QueryWrapper<>();
+            joinNumQueryWrapper.eq("teamId", team.getId()); // teamId必须要在已查询到的队伍列表中
+            joinNumQueryWrapper.eq("isDelete", 0); // 条件：仅未删除的才可以被查到
+            long hasJoinNum = userTeamService.count(joinNumQueryWrapper);
+              // 设置已加入人数到teamUserVO对象中
+            teamUserVO.setHasJoinNum((int) hasJoinNum);
+
+
             // 再创建一个userVO,返回脱敏后的用户信息
             if (user != null) {
                 UserVO userVO = new UserVO();
@@ -352,7 +361,7 @@ public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team>
         }
 
           // 下面为通过数据库查询的内容
-          // todo 加分布式锁(锁要加在对象上) -> 目的：锁进来时，可以让用户一个个的执行锁住的这段方法，避免用户加入多个队伍，导致数据错误
+          // 加分布式锁(锁要加在对象上) -> 目的：锁进来时，可以让用户一个个的执行锁住的这段方法，避免用户加入多个队伍，导致数据错误
             // 2.1 查询当前用户加入队伍的数量(自己创建的也算加入)
             Long userId = loginUser.getId();
         // 创建一个分布式锁 - redisson -> 只有一个线程能够获取到锁

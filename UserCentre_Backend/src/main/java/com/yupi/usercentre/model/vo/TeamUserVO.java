@@ -13,6 +13,7 @@ import java.util.List;
  * 队伍和用户信息封装类 (要脱敏！)
  * VO是Vue Object，是前端展示用的数据对象
  *
+ * 添加关于聊天的字段：最新的一条消息lastMessage, 未读消息数量unreadCount, 当前在线人数onlineCount
  * @author 17832
  */
 @Data
@@ -85,9 +86,23 @@ public class TeamUserVO implements Serializable {
      */
     private Integer hasJoinNum;
 
-
     /**
      * 是否已加入队伍
      */
     private boolean hasJoin;
+
+    /**
+     * 最新的一条消息
+     */
+    private ChatVO lastMessage;
+
+    /**
+     * 队伍中未读消息数量
+     */
+    private Integer unreadCount;
+
+    /**
+     * 当前在线人数
+     */
+    private Integer onlineCount;
 }
