@@ -26,10 +26,7 @@ import org.springframework.web.bind.annotation.*;
 
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 
@@ -332,7 +329,7 @@ public class TeamController {
     // ================================= 新功能：聊天接口开始 =================================
 
     /**
-     * 获取用户加入的队伍列表(与上面接口重复了，可以抽象为一个方法了) + 聊天信息
+     * 获取用户加入的队伍列表(与上面接口重复了，可以抽象为一个方法了) + 最新聊天信息
      * @param teamQuery
      * @param request
      * @return
@@ -361,9 +358,21 @@ public class TeamController {
         List<TeamUserVO> teamList = teamService.listTeams(teamQuery, true); // 然后调用Service层获取当前登录用户的队伍列表
 
         /* todo
-        2.获取当前队伍聊天室未读消息数
-        3.获取当前队伍聊天室最新信息
+        2.获取当前队伍聊天室未读消息数 -> 基于最后的阅读时间
+        3.获取当前队伍聊天室最新信息 -> 查询最新一条信息
          */
+
+        // 4.查询最新一条消息 -> 调用ChatMessageServiceImpl层中的getLastMessage方法
+        chatMessageService.getLastMessage(teamQuery.getId());
+
+        // 5.获取未读的消息数
+        // 5.1 先获取用户最后的阅读时间(前置条件，先有了最后的阅读时间才可以统计有多少条消息是未读状态)
+        Date lastReadTime = chatMessageService.getUserLastReadTime(teamQuery.getId(), loginUser.getId());
+
+        // 5.2 再获取当前队伍聊天室未读消息数 -> 基于最后的阅读时间
+        Long unreadCount = chatMessageService.getUnreadCount(teamQuery.getId(), teamQuery.getUserId(), lastReadTime);
+
+
         return ResultUtils.success(teamList);
     }
 
@@ -496,4 +505,5 @@ public class TeamController {
 
         return ResultUtils.success(true);
     }
+
 }

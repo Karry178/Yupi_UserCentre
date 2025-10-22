@@ -10,4 +10,11 @@ import com.yupi.usercentre.model.domain.UserTeam;
 */
 public interface UserTeamService extends IService<UserTeam> {
 
+    /**
+     * 判断当前登录用户与指定用户是否是同一队伍的成员
+     * @param userId 指定用户Id
+     * @param loginUserId 当前登录用户Id
+     * @return true-是同一队伍的成员，false-不是同一队伍的成员
+     */
+    boolean isTeamMember(Long userId, Long loginUserId);
 }

@@ -7,7 +7,6 @@ import com.yupi.usercentre.model.domain.User;
 import com.yupi.usercentre.model.request.ChatSendRequest;
 import com.yupi.usercentre.model.vo.ChatVO;
 
-import javax.servlet.http.HttpServletRequest;
 import java.util.Date;
 
 /**
@@ -36,10 +35,13 @@ public interface ChatMessageService extends IService<ChatMessage> {
     // 更新用户查看队伍最新消息的时间
     void updateUserLastReadTime(Long teamId, Long userId);
 
+    // 获取用户未读消息数量 -> 使用Long类型返回，更安全
+    Long getUnreadCount(Long teamId ,Long userId, Date lastReadTime);
 
     // 分页查询队伍聊天室历史消息
     Page<ChatVO> getHistoryMessage(Long teamId, Integer pageNum, Integer pageSize);
 
     // 用户在队伍聊天室中发送信息
     ChatVO sendMessage(ChatSendRequest chatSendRequest, User loginUser);
+
 }

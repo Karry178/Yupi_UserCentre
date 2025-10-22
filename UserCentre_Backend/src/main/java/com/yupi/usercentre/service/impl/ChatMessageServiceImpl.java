@@ -11,6 +11,7 @@ import com.yupi.usercentre.mapper.UserMapper;
 import com.yupi.usercentre.model.domain.ChatMessage;
 import com.yupi.usercentre.model.domain.User;
 import com.yupi.usercentre.model.domain.UserTeam;
+import com.yupi.usercentre.model.dto.ChatQuery;
 import com.yupi.usercentre.model.request.ChatSendRequest;
 import com.yupi.usercentre.model.vo.ChatVO;
 import com.yupi.usercentre.model.vo.UserVO;
@@ -134,7 +135,6 @@ public class ChatMessageServiceImpl extends ServiceImpl<ChatMessageMapper, ChatM
 
     // todo 实现用户查询在队伍中私聊窗口的最新消息
 
-
     /**
      * 辅助方法：获取用户在队伍中查看的最新消息时间
      * @param teamId
@@ -191,6 +191,44 @@ public class ChatMessageServiceImpl extends ServiceImpl<ChatMessageMapper, ChatM
             // 更新失败不影响主流程，只记录日志
             log.error("更新用户{}查看队伍{}的时间失败", userId, teamId, e);
         }
+    }
+
+
+    /**
+     * 获取未读消息数量
+     *
+     * @param teamId
+     * @param userId
+     * @param lastReadTime 队伍最后查看的时间
+     * @return 未读消息数量
+     */
+    @Override
+    public Long getUnreadCount(Long teamId, Long userId, Date lastReadTime) {
+        // 1.参数校验
+        if (teamId == null || teamId <= 0) {
+            throw new BusinessException(ErrorCode.PARAM_ERROR, "队伍Id不合法，请检查");
+        }
+        if (userId == null || userId <= 0) {
+            throw new BusinessException(ErrorCode.PARAM_ERROR, "用户Id不合法，请检查");
+        }
+        if (lastReadTime == null) {
+            // 加上一个阅读记录！
+            lastReadTime = new Date(0); // 如果没有阅读记录，默认认为从1970年1月1日0时0分0秒开始
+            log.error("用户{}在队伍{}没有阅读记录，则使用默认时间", userId, teamId);
+        }
+
+        // 2.添加查询条件 -> 查询当前未读消息数
+        QueryWrapper<ChatMessage> queryWrapper = new QueryWrapper<>();
+        queryWrapper.eq("teamId", teamId)
+                    .ne("senderId", userId) // 应该查询非当前用户发送的消息
+                    .eq("isDelete", 0)
+                    .gt("createTime", lastReadTime); // gt表示A大于B，即发送的时间必须大于最后阅读时间，才算未读
+
+        Long count = this.count(queryWrapper); // MyBatis-Plus提供的查询方法,源码使用Long类型接收Count
+
+        log.info("用户{}在队伍{}中未读的消息数量是{}", userId, teamId, count);
+
+        return count;
     }
 
 
@@ -372,7 +410,6 @@ public class ChatMessageServiceImpl extends ServiceImpl<ChatMessageMapper, ChatM
         }
         return sendMessageChatVO;
     }
-
 
 }
 
