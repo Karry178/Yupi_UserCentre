@@ -8,6 +8,7 @@ import com.yupi.usercentre.common.DeleteRequest;
 import com.yupi.usercentre.common.ErrorCode;
 import com.yupi.usercentre.common.ResultUtils;
 import com.yupi.usercentre.model.domain.User;
+import com.yupi.usercentre.model.domain.UserLocation;
 import com.yupi.usercentre.model.domain.UserTeam;
 import com.yupi.usercentre.model.dto.ChatQuery;
 import com.yupi.usercentre.model.dto.TeamQuery;
@@ -15,11 +16,9 @@ import com.yupi.usercentre.exception.BusinessException;
 import com.yupi.usercentre.model.domain.Team;
 import com.yupi.usercentre.model.request.*;
 import com.yupi.usercentre.model.vo.ChatVO;
+import com.yupi.usercentre.model.vo.TeamRecommendVO;
 import com.yupi.usercentre.model.vo.TeamUserVO;
-import com.yupi.usercentre.service.ChatMessageService;
-import com.yupi.usercentre.service.TeamService;
-import com.yupi.usercentre.service.UserService;
-import com.yupi.usercentre.service.UserTeamService;
+import com.yupi.usercentre.service.*;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.web.bind.annotation.*;
@@ -60,6 +59,10 @@ public class TeamController {
     // 引入ChatMessageService
     @Resource
     private ChatMessageService chatMessageService;
+
+    // 引入UserLocationService
+    @Resource
+    private UserLocationService userLocationService;
 
 
     /**
@@ -405,7 +408,6 @@ public class TeamController {
         queryWrapper.eq("teamId",teamId);
         queryWrapper.eq("userId",loginUser.getId());
 
-          // todo 3.2 为什么获取count？为什么count为0就不在队伍中？
           // 调用的UserTeamService方法，目的是查询用户——队伍列表中是否存在该用户
         long count = UserTeamService.count(queryWrapper);
         if (count == 0) {
@@ -502,8 +504,55 @@ public class TeamController {
         }
 
         // todo 4.批量标记队伍聊天室消息为已读
+        chatMessageService.markMessagesAsRead(teamId, loginUser.getId());
 
         return ResultUtils.success(true);
+    }
+
+
+    // ================================= 新功能：队伍推荐(心动)模式接口开始 =================================
+
+    // 获取推荐队伍列表
+    @GetMapping("/recommend")
+    public BaseResponse<List<TeamRecommendVO>> getRecommendTeams(@RequestParam(value = "pageSize", defaultValue = "10") Integer pageSize, HttpServletRequest request) {
+        // 加上@RequestParam注解的意思是：直接从TeamRecommendVO中获取参数pageSize,如果没有该参数，则使用默认值10
+
+        // ========== 步骤1：参数校验 ==========
+        if (pageSize == null || pageSize <= 0 || pageSize > 20) {
+            throw new BusinessException(ErrorCode.PARAM_ERROR, "推荐队伍数量不合法");
+        }
+
+        // ========== 步骤2：获取登录用户 ==========
+        // 2.1 获取登录用户 并校验
+        User loginUser = userService.getLoginUser(request);
+        if (loginUser == null) {
+            throw new BusinessException(ErrorCode.NO_LOGIN, "当前未登录");
+        }
+
+        // 2.2 获取登录用户的用户Id
+        Long loginUserId = loginUser.getId();
+
+        // ========== 步骤3：验证用户是否设置了位置 ==========
+        // 3.1 查询登录用户位置信息
+        UserLocation currentUserLocation = userLocationService.getCurrentUserLocation(loginUserId);
+        if (currentUserLocation == null) {
+            throw new BusinessException(ErrorCode.PARAM_ERROR, "请先设置您的位置信息");
+        }
+
+        // 3.2 验证位置信息完整性 -> 检查位置中的省、市是否存在，并且省、市不能为空
+        if (currentUserLocation.getProvince() == null || currentUserLocation.getCity() == null) {
+            throw new BusinessException(ErrorCode.PARAM_ERROR, "您的位置信息不完整，请重新设置");
+        }
+
+        // ========== 步骤4：调用 Service 获取推荐队伍 ==========
+        /**
+         * 获取推荐队伍列表，实现方法中传入当前登录用户Id和每页展示队伍数量
+         */
+        List<TeamRecommendVO> recommendTeams = teamService.getRecommendTeams(loginUserId, pageSize);
+
+        // ========== 步骤5：返回结果 ==========
+        return ResultUtils.success(recommendTeams);
+
     }
 
 }

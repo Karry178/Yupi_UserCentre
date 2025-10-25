@@ -96,6 +96,64 @@ public interface UserService extends IService<User> {
      * @return 匹配的用户列表
      */
     List<User> matchUsers(Long num, User loginUser);
+
+
+
+    // ============ 新功能：获取最为匹配的队伍列表 =============
+    /**
+     * 将标签相似度计算抽取成独立方法：
+     * 这两个方法属于工具方法，是被其余Service方法调用的，不要直接面向前段！！因为不是独立的业务功能！
+     *
+     * 原有方法：
+     * matchUsers() - 返回匹配用户列表
+     *
+     * 新增方法：
+     * calculateTagSimilarity(User user1, User user2) - 计算两个用户的标签相似度
+     * calculateAvgTagSimilarity(User user, List<User> members) - 计算平均相似度
+     */
+
+
+    /**
+     * 计算两个用户的标签相似度
+     *
+     * 算法说明：
+     * - 使用编辑距离算法计算标签差异
+     * - 将距离转换为相似度分数（0-1之间）
+     * - 距离越小，相似度越高
+     *
+     * 应用场景：
+     * - 队伍推荐：计算用户与队伍成员的相似度
+     * - 好友推荐：计算用户之间的匹配度
+     * - 内容推荐：基于标签推荐相关内容
+     *
+     * @param user1 用户1
+     * @param user2 用户2
+     * @return 相似度分数（0-1之间）
+     *         - 0.0：完全不相似
+     *         - 1.0：完全相同
+     *         - 0.7：70%的标签相同
+     */
+    double calculateTagSimilarity(User user1, User user2);
+
+
+    /**
+     * 计算用户与一组用户的平均标签相似度
+     *
+     * 算法说明：
+     * - 计算当前用户与每个成员的相似度
+     * - 求所有相似度的平均值
+     * - 跳过当前用户自己和没有标签的成员
+     *
+     * 应用场景：
+     * - 队伍推荐：评估用户与整个队伍的匹配程度
+     * - 群组推荐：评估用户与群组的匹配程度
+     *
+     * @param currentUser 当前用户
+     * @param members 成员列表
+     * @return 平均相似度分数（0-1之间）
+     *         - 如果没有可比较的成员，返回0.0
+     */
+    double calculateAvgTagSimilarity(User currentUser, List<User> members);
 }
 
 

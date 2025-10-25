@@ -7,6 +7,7 @@ import com.yupi.usercentre.model.dto.TeamQuery;
 import com.yupi.usercentre.model.request.TeamJoinRequest;
 import com.yupi.usercentre.model.request.TeamQuitRequest;
 import com.yupi.usercentre.model.request.TeamUpdateRequest;
+import com.yupi.usercentre.model.vo.TeamRecommendVO;
 import com.yupi.usercentre.model.vo.TeamUserVO;
 
 import java.util.List;
@@ -73,4 +74,18 @@ public interface TeamService extends IService<Team> {
      * @return
      */
     boolean deleteTeam(long id, User loginUser);
+
+
+
+    // ================================= 新功能：队伍推荐(心动)模式接口实现 =================================
+
+    /**
+     * 推荐队伍列表
+     * @param userId 登录用户Id
+     * @param pageSize 每页展示队伍数量
+     * @return 队伍列表
+     */
+    List<TeamRecommendVO> getRecommendTeams(Long userId, Integer pageSize);
+
+
 }

@@ -44,4 +44,10 @@ public interface ChatMessageService extends IService<ChatMessage> {
     // 用户在队伍聊天室中发送信息
     ChatVO sendMessage(ChatSendRequest chatSendRequest, User loginUser);
 
+    /**
+     * 用户在队伍聊天室中，将未读消息标记为已读
+     * @param teamId 队伍id
+     * @param id 用户id
+     */
+    void markMessagesAsRead(Long teamId, Long id);
 }

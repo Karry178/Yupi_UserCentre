@@ -428,7 +428,6 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
      */
     @Override
     public List<User> matchUsers(Long num, User loginUser) {
-        // TODO: 实现用户匹配逻辑
 
         // 0.创建查询条件，并通过Service层获取通过查询条件的用户列表
         QueryWrapper<User> queryWrapper = new QueryWrapper<>();
@@ -509,6 +508,179 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
                 .collect(Collectors.toList());*/
 
         return userVOList;
+    }
+
+
+
+    // ============ 新功能：获取最为匹配的队伍列表 =============
+    /**
+     * 将标签相似度计算抽取成独立方法：
+     * 这两个方法属于工具方法，是被其余Service方法调用的，不要直接面向前段！！因为不是独立的业务功能！
+     *
+     * 原有方法：
+     * matchUsers() - 返回匹配用户列表
+     *
+     * 新增方法：
+     * calculateTagSimilarity(User user1, User user2) - 计算两个用户的标签相似度
+     * calculateAvgTagSimilarity(User user, List<User> members) - 计算平均相似度
+     */
+
+
+    /**
+     * 计算两个用户的标签相似度
+     *
+     * 算法说明：
+     * - 使用编辑距离算法计算标签差异
+     * - 将距离转换为相似度分数（0-1之间）
+     * - 距离越小，相似度越高
+     *
+     * 应用场景：
+     * - 队伍推荐：计算用户与队伍成员的相似度
+     * - 好友推荐：计算用户之间的匹配度
+     * - 内容推荐：基于标签推荐相关内容
+     *
+     * @param user1 用户1
+     * @param user2 用户2
+     * @return 相似度分数（0-1之间）
+     *         - 0.0：完全不相似
+     *         - 1.0：完全相同
+     *         - 0.7：70%的标签相同
+     */
+    @Override
+    public double calculateTagSimilarity(User user1, User user2) {
+
+        // ========== 步骤1：参数校验 ==========
+        // 1.1 检验用户对象是否为空
+        if (user1 == null || user2 == null) {
+            log.info("用户对象的值为空，请检查");
+        }
+
+        // 1.2 获取两个用户的标签字段
+        String tags1 = user1.getTags();
+        String tags2 = user2.getTags();
+        if (StringUtils.isBlank(tags1) || StringUtils.isBlank(tags2)) {
+            log.info("用户标签为空，请检查");
+            return 0;
+        }
+
+        // ========== 步骤2：解析标签 ==========
+        // 2.1 创建Gson对象，将标签字段从JSON格式转换为String格式
+        Gson gson = new Gson();
+
+        // 2.2 将JSON字符串转换为List<String>
+        // todo 讲解一下怎么转换的，代码是什么？
+        List<String> tagList1 = gson.fromJson(tags1, new TypeToken<List<String>>() {
+        }.getType());
+        List<String> tagList2 = gson.fromJson(tags2, new TypeToken<List<String>>() {
+        }.getType());
+
+        // 2.3 检验解析结果
+        if (tagList1 == null || tagList2 == null) {
+            log.info("标签解析失败，请重试");
+            return 0;
+        }
+
+        // ========== 步骤3：计算编辑距离 ==========
+        // 3.1 调用算法工具类计算最小距离 -> AlgorithmUtils.misDistance(tagList1, tagList2);
+        long distance = AlgorithmUtils.minDistance(tagList1, tagList2);
+
+
+        // ========== 步骤4：转换为相似度分数 ==========
+        // 4.1 计算最大可能距离
+        int maxDistance = Math.max(tagList1.size(), tagList2.size());
+
+        // 4.2 计算相似度 -> 归一化：相似度分数 = 1 - 最小距离 / 最大可能距离
+        double similarity = 1.0 - (double) distance / maxDistance;
+
+        // 4.3 确保分数在0-1之间 -> Math.max(0.0, x):确保x不小于0，Math.min(1.0,x):确保x不大于1
+        double similarityScore = Math.max(0.0, Math.min(1.0, similarity));
+
+        // 4.4 返回相似度分数
+        return similarityScore;
+
+    }
+
+
+
+    /**
+     * 计算用户与一组用户的平均标签相似度
+     *
+     * 算法说明：
+     * - 计算当前用户与每个成员的相似度
+     * - 求所有相似度的平均值
+     * - 跳过当前用户自己和没有标签的成员
+     *
+     * 应用场景：
+     * - 队伍推荐：评估用户与整个队伍的匹配程度
+     * - 群组推荐：评估用户与群组的匹配程度
+     *
+     * @param currentUser 当前用户
+     * @param members 成员列表
+     * @return 平均相似度分数（0-1之间）
+     *         - 如果没有可比较的成员，返回0.0
+     */
+    @Override
+    public double calculateAvgTagSimilarity(User currentUser, List<User> members) {
+
+        // ========== 步骤1：参数校验 ==========
+        // 1.1 检查当前登录用户与成员列表是否为空
+        if (currentUser == null || members == null || members.isEmpty()) {
+            log.info("当前登录用户或队伍列表为空值，请检查");
+            return 0;
+        }
+
+        // 1.2 检查当前用户是否具有标签
+        if (currentUser.getTags() == null || currentUser.getTags().isEmpty()) {
+            log.info("当前用户的标签为空，请检查");
+        }
+
+        // ========== 步骤2：创建相似度列表 ==========
+        // 2.1 创建一个列表，存放每个成员标签页的相似度
+        // 为什么类型是Double？ 因为相似度是小数
+        ArrayList<Double> similarityList = new ArrayList<>();
+
+
+        // ========== 步骤3：遍历成员，计算相似度 ==========
+        // 3.1 遍历成员列表
+        for (User member : members) {
+            // 3.2 跳过当前是用户自己的情况
+            if (currentUser.getId().equals(member.getId())) {
+                continue;
+            }
+
+            // 3.3 跳过没有标签的成员
+            if (StringUtils.isBlank(member.getTags())) {
+                continue;
+            }
+
+            // 3.4 计算当前登录用户与遍历到的该成员的标签相似度
+            // 调用工具方法calculateTagSimilarity
+            double tagSimilarity = calculateTagSimilarity(currentUser, member);
+
+            // 3.5 将相似度添加到标签相似度列表similarityList
+            similarityList.add(tagSimilarity);
+        }
+
+        // ========== 步骤4：计算平均值 ==========
+        // 4.1 判断是否有 有效的相似度
+        if (similarityList.isEmpty()) {
+            log.info("没有有效的相似度");
+            return 0;
+        }
+
+        // todo 这一步我没看懂，没看到计算平均值的代码啊？
+        // 4.2 使用stream流 计算队伍标签与登录用户相似度 平均值
+        // mapToDouble():将Double对象转换为double基本类型
+        // average():计算平均值,返回Optional<Double>
+        // orElse(0):如果average()返回Optional<Double>为空，则返回0
+        double avgSimilarity = similarityList.stream()
+                .mapToDouble(Double::doubleValue)
+                .average()
+                .orElse(0);
+
+        // 4.3 返回平均相似度
+        return avgSimilarity;
+
     }
 }
 
